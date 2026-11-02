@@ -10,8 +10,16 @@
 
 Откройте PowerShell в папке пакета и выполните, подставив свой путь к установленной игре:
 
+Чтобы перейти в папку распакованного пакета, сначала выполните в PowerShell, например (замените путь на свой):
+
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Prepare-Coop.ps1 -GameDirectory "C:\Games\SovietRepublic"
+cd "C:\RepublicMP-LAN"
+```
+
+Затем выполните команду подготовки, указав путь к установленной игре:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Prepare-Coop.ps1 -GameDirectory "C:\Путь до папки с игрой"
 ```
 
 Параметр RemoteSigned относится только к запускаемому процессу PowerShell: постоянные настройки и групповые политики не изменяются. Он сохраняет проверку подписей для скриптов с меткой загрузки из Интернета. Если Windows пометила скачанный архив, после проверки источника и SHA-256 используйте «Свойства → Разблокировать» для архива до распаковки.
@@ -19,7 +27,7 @@ powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\Prepare-Coop.ps1
 Сначала проверяются хеши игры и runtime, затем создаётся **отдельная физическая копия** в `local/game`. Оригинал остаётся источником только для чтения. Сохранения, облачные сохранения, скриншоты, workshop_wip и пользовательские настройки не копируются; применяются штатные настройки по умолчанию. Подготовка может занимать несколько минут и место размером с игру. Существующая папка назначения не перезаписывается. При неудачной подготовке сохраните её для диагностики и укажите новое имя:
 
 ```powershell
-.\Prepare-Coop.ps1 -GameDirectory "C:\Games\SovietRepublic" -TestDirectory "$PWD\local\game2"
+.\Prepare-Coop.ps1 -GameDirectory "C:\Путь до папки с игрой" -TestDirectory "$PWD\local\game2"
 ```
 
 ## Запуск
