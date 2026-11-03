@@ -29,6 +29,9 @@ NetLink NetworkListen(unsigned short port, int backlog);
 NetLink NetworkAcceptReady(NetLink listenSock, DWORD waitMs, DWORD ioTimeoutMs);
 // The send/recv timeout of a connection (0 = none).
 void NetworkSetTimeouts(NetLink sock, DWORD timeoutMs);
+// Set only the TCP send deadline; an idle receive may remain unlimited.
+// Configuration failure shuts the TCP connection down. Steam is unchanged.
+void NetworkSetSendTimeout(NetLink sock, DWORD timeoutMs);
 // The remote address of a connection, "" when unknown.
 void NetworkPeerAddress(NetLink sock, char* out, size_t outSize);
 
@@ -48,7 +51,9 @@ bool NetworkSendFile(NetLink sock, const char* filePath,
 bool NetworkReceiveFile(NetLink sock, const char* outFilePath,
                         NetworkProgressFn onProgress = nullptr, void* userData = nullptr);
 
-// Sends/receives exactly `size` bytes; false on error or timeout.
+// TCP: a nonzero socket timeout is a TOTAL deadline for this exact operation,
+// including partial progress. Zero retains unlimited blocking I/O.
+// False on error or timeout; discard the connection after a failed exact I/O.
 bool NetworkSendExact(NetLink sock, const void* data, size_t size);
 bool NetworkRecvExact(NetLink sock, void* data, size_t size);
 

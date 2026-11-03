@@ -4,6 +4,7 @@
 // menu's scale s, the panel is menu\strip*.png at 87%, the rows are the
 // "Square" font 32s high, red with a gold outline, white under the mouse.
 #include "multiplayer_page.h"
+#include "network_settings.h"
 #include "game_assets.h"
 #include "ui_text.h"
 #include "../game/main_menu_hook.h"
@@ -34,6 +35,7 @@ static const ImU32 kSection = IM_COL32(0x8C, 0x80, 0x76, 0xFF); // the grey of t
 static const float kTextHeight = 32.0f;
 
 static bool s_open = false;
+static bool s_networkSettings = false;
 static bool s_menuOn = false;        // the root menu is on screen (its builder keeps running)
 static bool s_hostAfterLoad = false;
 static bool s_leftMenu = false;      // since the request: the root menu went away
@@ -435,6 +437,11 @@ static void SessionTab(float left, float right, float bottom, float s)
         }
     }
     if (n == 0 && st != SESSION_HOST_LISTENING) Label(GAME_FONT_ARIAL, 22 * s, ImVec2(x + 10 * s, y), kInk, "...");
+    const char* mismatch = LockstepNet_Desync();
+    if (mismatch && mismatch[0]) {
+        y += 15 * s;
+        WrappedLabel(GAME_FONT_ARIAL, 20 * s, ImVec2(x, y), 470 * s, 4, kRowRed, mismatch);
+    }
 
     // Right: the host chooses who sees the game in the list, and gives out its SteamID64.
     float c1 = right + 120 * s, c2 = right + 340 * s;
@@ -462,6 +469,8 @@ static void SessionTab(float left, float right, float bottom, float s)
     bool cursors = Presence_GetShowCursors();
     if (Choice("##sShow", "SHOW", c1, ry + 30 * s, s, cursors)) Presence_SetShowCursors(true);
     if (Choice("##sHide", "HIDE", c2, ry + 30 * s, s, !cursors)) Presence_SetShowCursors(false);
+    if (Row("##sessionNetwork", "Network settings", right + 230 * s, ry + 90 * s, s)) s_networkSettings = true;
+    if (host && st == SESSION_HOST_IN_GAME && Row("##sessionResync", "Re-sync now", right + 230 * s, ry + 140 * s, s)) SaveSync_RequestResync();
 
     // The game is left (Stop hosting / Disconnect) only after the session's first moments.
     bool canStop = SaveSync_GetSessionAgeMs() >= SAVE_SYNC_STOP_BUTTON_DELAY_MS;
@@ -510,6 +519,11 @@ void MultiplayerPage_DrawMenuButton()
 
 void MultiplayerPage_Draw()
 {
+    if (s_networkSettings) {
+        ImGui::SetNextWindowSize(ImVec2(650, 530), ImGuiCond_FirstUseEver);
+        if (ImGui::Begin(T("Network settings"), &s_networkSettings)) NetworkSettings_DrawControls();
+        ImGui::End();
+    }
     if (!MultiplayerPage_IsOpen()) return; // closed, or waiting for the menu or a city
     if (!s_targetInit) {
         s_target = SaveSync_GetTargetIp();
@@ -562,6 +576,8 @@ void MultiplayerPage_Draw()
     if (session) SessionTab(left, right, pMax.y - 70 * s, s);
     else if (s_tab == 0) HostTab(cx, left, right, s);
     else JoinTab(cx, pMin.x + 50 * s, pMax.x - 50 * s, s);
+
+    if (!session && Row("##networkSettings", "Network settings", cx, s_tab == 0 ? 870 * s : 760 * s, s)) s_networkSettings = true;
 
     const char* status = SaveSync_GetLastError(); // why the last session ended or failed
     if (!session && status && status[0])

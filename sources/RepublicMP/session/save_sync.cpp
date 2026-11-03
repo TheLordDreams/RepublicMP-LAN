@@ -13,6 +13,7 @@
 #include "../game/world.h"
 #include "../lockstep/lockstep_net.h"
 #include "../core/profile.h"
+#include "../core/network_settings.h"
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -60,7 +61,7 @@ static volatile ULONGLONG g_sessionStartTick = 0;
 
 // Re-sync (see save_sync.h).
 #define RESYNC_ANNOUNCE_FLUSH_MS 500    // host: lets the announcement leave before the channels close
-#define RESYNC_REJOIN_TIMEOUT_MS 30000  // host: how long the players have to come back; client: how long it retries
+#define RESYNC_REJOIN_TIMEOUT_MS NetworkSettings_Ms(NET_REJOIN_SECONDS)  // host: how long the players have to come back; client: how long it retries
 #define RESYNC_RETRY_MS 500
 static volatile bool g_resyncRequested = false; // host: the button
 static volatile bool g_resyncing = false;
@@ -70,9 +71,9 @@ static volatile ULONGLONG g_lastWorldSentTick = 0; // host: when the players las
 // Every PC loads the sent save with the determinism layer on and runs the
 // same ticks (lockstep/lockstep_net).
 static volatile bool g_dlcCheck = true; // refuse a join when the DLCs differ (both players' choice)
-#define LOCKSTEP_CONNECT_TIMEOUT_MS 180000 // host: how long the loaded players get to connect
-#define HELLO_ANSWER_TIMEOUT_MS 60000      // client: the host is taking other players in
-#define LOCKSTEP_SILENCE_MS 20000          // a game that sent nothing (not even a keepalive) is gone
+#define LOCKSTEP_CONNECT_TIMEOUT_MS NetworkSettings_Ms(NET_WORLD_SECONDS) // host: how long the loaded players get to connect
+#define HELLO_ANSWER_TIMEOUT_MS (NetworkSettings_Ms(NET_REJOIN_SECONDS) + (PROFILE_MAX_PLAYERS - 1) * NetworkSettings_Ms(NET_HELLO_SECONDS) + 5000) // allow the host to gather and check other players
+#define LOCKSTEP_SILENCE_MS NetworkSettings_Ms(NET_SILENCE_SECONDS)          // a game that sent nothing (not even a keepalive) is gone
 static const char* const kResyncReason = "re-sync";
 
 static void SetState(SessionState s) { g_state = s; }
@@ -577,7 +578,7 @@ static bool CheckJoiner(Joiner& j)
         SaveStatus("[HOST] %s dropped during the version check", j.ip);
         return false;
     }
-    NetworkSendExact(j.sock, &mine, sizeof(mine)); // always, so the client can show what differs
+    if (!NetworkSendExact(j.sock, &mine, sizeof(mine))) return false; // also answer mismatched clients
     char why[256];
     if (!HelloMatches(theirs, why, sizeof(why))) {
         SetSessionError("join refused: %s", why);
@@ -601,6 +602,7 @@ static bool CheckJoiner(Joiner& j)
         SetSessionError("%s dropped during the name exchange", j.ip);
         return false;
     }
+    NetworkSetTimeouts(j.sock, NetworkSettings_Ms(NET_WORLD_SECONDS));
     return true;
 }
 
@@ -621,8 +623,10 @@ static void WorldSendProgress(unsigned long long done, unsigned long long total,
 static DWORD WINAPI WorldSendThread(LPVOID param)
 {
     WorldSend* w = (WorldSend*)param;
+    NetworkSetTimeouts(w->j->sock, NetworkSettings_Ms(NET_TRANSFER_SECONDS));
     w->ok = SendMsg(w->j->sock, MSG_FILE_FOLLOWS, 4, -1, "") &&
             NetworkSendFile(w->j->sock, w->zipPath, WorldSendProgress, w);
+    NetworkSetTimeouts(w->j->sock, NetworkSettings_Ms(NET_WORLD_SECONDS));
     return 0;
 }
 
@@ -885,7 +889,7 @@ static void Gather(std::vector<Joiner>& batch, int room, const std::vector<std::
         ULONGLONG now = GetTickCount64();
         if (expect && (!MissingOf(batch, *expect) || now - start >= timeoutMs)) break;
         if (!expect && firstAt && now - firstAt >= GATHER_MORE_MS) break;
-        NetLink s = NetworkAcceptReady(g_listener, 200, 0);
+        NetLink s = NetworkAcceptReady(g_listener, 200, NetworkSettings_Ms(NET_HELLO_SECONDS));
         if (s == NET_NO_LINK) continue;
         int missingBefore = expect ? MissingOf(batch, *expect) : 0;
         TakeJoiner(s, batch);
@@ -945,7 +949,7 @@ static const char* MonitorLockstepHost(std::vector<Joiner>& batch)
         // Room for more: a new player joins through a re-sync of everyone.
         if (count < SaveSync_MaxPlayers() - 1) {
             if (OpenListener()) {
-                NetLink s = NetworkAcceptReady(g_listener, 0, 0);
+                NetLink s = NetworkAcceptReady(g_listener, 0, NetworkSettings_Ms(NET_HELLO_SECONDS));
                 if (s != NET_NO_LINK) {
                     TakeJoiner(s, batch);
                     SaveStatus("[HOST] %s connects - re-syncing everyone so all load the same world", batch.back().ip);
@@ -1089,7 +1093,7 @@ static bool RunClientJoin(bool rejoin)
         }
         ULONGLONG connectStart = GetTickCount64();
         for (;;) {
-            sock = NetworkConnect(g_targetIp, SAVE_SYNC_PORT, 15000, 0, &g_disconnectRequested);
+            sock = NetworkConnect(g_targetIp, SAVE_SYNC_PORT, NetworkSettings_Ms(NET_CONNECT_SECONDS), NetworkSettings_Ms(NET_HELLO_SECONDS), &g_disconnectRequested);
             if (sock != NET_NO_LINK || !rejoin || g_disconnectRequested) break;
             if (GetTickCount64() - connectStart > RESYNC_REJOIN_TIMEOUT_MS) break;
             SyncBlock_SetStep(1, JOIN_STEPS, "Re-sync: waiting for the host to open for the players again", -1);
@@ -1155,6 +1159,7 @@ static bool RunClientJoin(bool rejoin)
         _snprintf_s(peer, sizeof(peer), _TRUNCATE, "%s (%s)", hostNick, g_targetIp);
         SetPeerIp(peer);
 
+        NetworkSetTimeouts(sock, NetworkSettings_Ms(NET_WORLD_SECONDS));
         // 2-3. The host saves and packs; its steps arrive as messages.
         ClientStep(2, "Waiting for the host - saving the world");
         bool fileFollows = false;
@@ -1180,11 +1185,13 @@ static bool RunClientJoin(bool rejoin)
         // 4. Receive.
         ClientStep(4, "Receiving the world", 0);
         ProgressCtx recvCtx = { NET_NO_LINK, nullptr, 4, nullptr, 0 };
+        NetworkSetTimeouts(sock, NetworkSettings_Ms(NET_TRANSFER_SECONDS));
         if (!NetworkReceiveFile(sock, zipPath, NetworkProgressCb, &recvCtx)) {
             SetSessionError("receiving the world failed - connection lost");
             break;
         }
 
+        NetworkSetTimeouts(sock, NetworkSettings_Ms(NET_WORLD_SECONDS));
         // 5. Unpack (relayed to the host).
         ClientStep(5, "Unpacking", 0);
         SendMsg(sock, MSG_STEP, 5, 0, "unpacking");
@@ -1228,7 +1235,12 @@ static bool RunClientJoin(bool rejoin)
         // once every player has loaded (a slow download keeps the others
         // waiting), and closes it when it crashed or gave up on this one.
         bool lockstepUp = false, hostGone = false;
+        ULONGLONG lockstepWaitStart = GetTickCount64();
         while (!g_disconnectRequested) {
+            if (GetTickCount64() - lockstepWaitStart >= NetworkSettings_Ms(NET_WORLD_SECONDS)) {
+                SetSessionError("timed out waiting for the host's lockstep connection");
+                break;
+            }
             if (LockstepNet_Join(g_targetIp, 6000, &g_disconnectRequested)) {
                 lockstepUp = true;
                 break;
@@ -1248,8 +1260,13 @@ static bool RunClientJoin(bool rejoin)
         // player still connecting would miss.
         SyncBlock_SetStep(7, JOIN_STEPS, "Waiting for the other players to connect", -1);
         ULONGLONG lastPing = 0;
+        ULONGLONG playersWaitStart = GetTickCount64();
         while (!g_disconnectRequested && LockstepNet_IsConnected() && !LockstepNet_SessionStarted()) {
             ULONGLONG now = GetTickCount64();
+            if (now - playersWaitStart >= NetworkSettings_Ms(NET_WORLD_SECONDS)) {
+                SetSessionError("timed out waiting for the other players");
+                break;
+            }
             if (now - lastPing >= 1000) {
                 LockstepNet_Ping();
                 lastPing = now;
@@ -1257,7 +1274,7 @@ static bool RunClientJoin(bool rejoin)
             Sleep(100);
         }
         if (!LockstepNet_SessionStarted()) {
-            if (!g_disconnectRequested) SetSessionError("the host dropped while waiting for the other players");
+            if (!g_disconnectRequested && !g_lastError[0]) SetSessionError("the host dropped while waiting for the other players");
             break;
         }
         joined = true;
@@ -1360,7 +1377,9 @@ void SaveSync_StartHost(int gameMode)
     g_sessionStartTick = GetTickCount64();
     SetSessionError("");
     SetState(SESSION_HOST_LISTENING);
-    CreateThread(nullptr, 0, HostSessionThread, nullptr, 0, nullptr);
+    HANDLE thread = CreateThread(nullptr, 0, HostSessionThread, nullptr, 0, nullptr);
+    if (thread) CloseHandle(thread);
+    else { SetSessionError("could not start host worker (Windows error %lu)", GetLastError()); SetState(SESSION_IDLE); }
 }
 
 void SaveSync_StartClient(const char* hostIp)
@@ -1376,7 +1395,9 @@ void SaveSync_StartClient(const char* hostIp)
     g_sessionStartTick = GetTickCount64();
     SetSessionError("");
     SetState(SESSION_CLIENT_JOINING);
-    CreateThread(nullptr, 0, ClientSessionThread, nullptr, 0, nullptr);
+    HANDLE thread = CreateThread(nullptr, 0, ClientSessionThread, nullptr, 0, nullptr);
+    if (thread) CloseHandle(thread);
+    else { SetSessionError("could not start client worker (Windows error %lu)", GetLastError()); SetState(SESSION_IDLE); }
 }
 
 void SaveSync_RequestDisconnect()
@@ -1398,7 +1419,10 @@ void SaveSync_RequestResync()
     if (g_isHost && g_state == SESSION_HOST_IN_GAME) g_resyncRequested = true;
 }
 
-void SaveSync_SetDesyncResyncSeconds(int seconds) { g_desyncResyncSeconds = seconds < 0 ? -1 : seconds; }
+void SaveSync_SetDesyncResyncSeconds(int seconds) {
+    g_desyncResyncSeconds = seconds < 0 ? -1 : seconds > 300 ? 300 : seconds;
+    Profile_SetInt("network", "desync_resync_seconds", g_desyncResyncSeconds);
+}
 int SaveSync_GetDesyncResyncSeconds() { return g_desyncResyncSeconds; }
 
 ULONGLONG SaveSync_GetMsUntilDesyncResync()
@@ -1454,7 +1478,11 @@ void SaveSync_Tick()
 }
 
 SessionState SaveSync_GetState() { return g_state; }
-static void LoadSettings() { g_dlcCheck = Profile_GetInt("profile", "dlc_check", 1) != 0; }
+static void LoadSettings() {
+    g_dlcCheck = Profile_GetInt("profile", "dlc_check", 1) != 0;
+    int delay = Profile_GetInt("network", "desync_resync_seconds", 60);
+    g_desyncResyncSeconds = delay == -1 || delay == 0 || delay == 60 || delay == 120 || delay == 300 ? delay : 60;
+}
 
 void SaveSync_SetDlcCheck(bool on)
 {

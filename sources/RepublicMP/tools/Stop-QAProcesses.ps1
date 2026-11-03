@@ -4,6 +4,13 @@ param([Parameter(Mandatory=$true)][string]$RunDirectory)
 $ErrorActionPreference='Stop'
 $repo=Split-Path -Parent $PSScriptRoot
 $allowedRoot=[IO.Path]::GetFullPath((Join-Path $repo 'local/test-installs')).TrimEnd('\')+'\'
+if ($env:COOP_QA_TEST_ROOT) {
+    $candidate=[IO.Path]::GetFullPath($env:COOP_QA_TEST_ROOT).TrimEnd('\')+'\'
+    $package=Split-Path -Parent (Split-Path -Parent $repo)
+    $packagedRoot=[IO.Path]::GetFullPath((Join-Path $package 'local/test-installs')).TrimEnd('\')+'\'
+    if ($candidate -ine $allowedRoot -and $candidate -ine $packagedRoot) { throw 'Unrecognized private QA root' }
+    $allowedRoot=$candidate
+}
 $run=[IO.Path]::GetFullPath($RunDirectory)
 $runsRoot=[IO.Path]::GetFullPath((Join-Path $repo 'local/qa-runs')).TrimEnd('\')+'\'
 if(-not $run.StartsWith($runsRoot,[StringComparison]::OrdinalIgnoreCase)){throw 'Run must be inside private qa-runs'}

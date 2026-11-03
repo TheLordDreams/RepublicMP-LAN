@@ -7,7 +7,7 @@ $builder = Get-Command MSBuild.exe -ErrorAction SilentlyContinue | Select-Object
 if (-not $builder) {
     $locator = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
     if (Test-Path -LiteralPath $locator) {
-        $builder = & $locator -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find 'MSBuild\**\Bin\MSBuild.exe' | Select-Object -First 1
+        $builder = & $locator -latest -prerelease -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find 'MSBuild\**\Bin\MSBuild.exe' | Select-Object -First 1
     }
 }
 if (-not $builder) {

@@ -1,13 +1,35 @@
 {
-  "schema": 1,
-  "generatedAt": "2026-10-25T09:12:22.327Z",
-  "dllSha256": "1d1adec7960987cd9c4cf49a14b93cd415a0cccea55ae4b2e4231c689e400c29",
+  "schema": 2,
+  "version": "0.7.2-lan2-rc1",
   "gameVersion": "1.1.1.9",
-  "steamBuild": 23935965,
-  "scope": "Two licensed native clients on one Windows PC, physical copies and PID-isolated native events",
-  "runs": [
+  "steamBuild": "23935965",
+  "dllSha256": "c272ce1d4fdbafe169f68a4e093569fea5102c924918b31106e34be8f1fcda98",
+  "interruptedRuns": [
     {
-      "run": "2026-10-25T03-52-09-325Z",
+      "run": "2026-11-03T08-09-01-313Z",
+      "outcome": "INCOMPLETE",
+      "lastObservedLongRunSeconds": 934,
+      "reason": "Both game statuses became unavailable for 15 seconds; cleanup did not produce a complete result.json.",
+      "diagnosis": "Cause unproven. No full 20-minute pass claimed for this run; later repeat passed."
+    }
+  ],
+  "runnerSha256": "f4dfae3096a02145a6bbd49c06486420a79f05983ef62cd12330010a7aa6c83b",
+  "build": {
+    "configuration": "Release x64 LAN",
+    "errors": 0,
+    "warnings": 0
+  },
+  "nativeTcp": {
+    "passed": 12
+  },
+  "tools": {
+    "peInspectionPassed": 6,
+    "gameslotPassed": 18,
+    "gameslotMutationTwinsCaught": 13
+  },
+  "live": [
+    {
+      "run": "2026-11-03T10-02-59-748Z",
       "outcome": "PASS",
       "completedChecks": [
         "host/client paid native construction and demolition",
@@ -15,152 +37,55 @@
         "client disconnect/rejoin with fresh shared world and strict hashes",
         "20 real-minute strict hash run without resync"
       ],
-      "exactTickMatches": 718,
-      "lastComparedTick": 36000,
-      "nativeHostLastMatchedTick": 36000,
-      "construction": [
-        {
-          "actor": "host",
-          "nativeBuildingCompleted": true,
-          "nativeBuildingRemoved": true,
-          "nativeDemolitionCaptureCount": 1,
-          "demolitionReplayedExactlyOnce": true,
-          "localCurrencyUnchangedAfterReplay": true,
-          "equalNetRubleDecrease": 6789.064438518137
-        },
-        {
-          "actor": "client",
-          "nativeBuildingCompleted": true,
-          "nativeBuildingRemoved": true,
-          "nativeDemolitionCaptureCount": 1,
-          "demolitionReplayedExactlyOnce": true,
-          "localCurrencyUnchangedAfterReplay": true,
-          "equalNetRubleDecrease": 6619.482566444203
-        }
-      ],
+      "chaos": "lag-jitter",
+      "disconnectAfterMs": 0,
+      "matchedSamples": 608,
+      "lastComparedTick": 29400,
       "longRun": {
-        "startedAt": "2026-10-25T03:55:30.007Z",
+        "startedAt": "2026-11-03T10:06:58.901Z",
         "requestedMinutes": 20,
         "startTicks": [
-          314,
+          317,
           307
         ],
         "startWorlds": [
           3,
           2
         ],
-        "finishedAt": "2026-10-25T04:15:30.104Z",
-        "elapsedMs": 1200102.3667000001,
+        "finishedAt": "2026-11-03T10:26:59.034Z",
+        "elapsedMs": 1200137.0856,
         "endTicks": [
-          36037,
-          36043
+          29461,
+          29457
         ],
-        "lastMatchedTick": 36000,
-        "matchedSamples": 718,
-        "sampledIntervalsWithMovingVehicles": 594,
-        "exactTickSamplesDuringLongRun": 595
+        "lastMatchedTick": 29400,
+        "matchedSamples": 608
       },
-      "proxy": null
+      "scope": "Two actual clients on one Windows PC with isolated native events. Separate PCs, friend network, Steam P2P and OS packet loss are not tested."
     },
     {
-      "run": "2026-10-25T04-15-44-037Z",
-      "outcome": "PASS",
-      "completedChecks": [
-        "host/client paid native construction and demolition",
-        "city transfer, strict baseline, pause/resume, exactly-once economy and shared save"
-      ],
-      "exactTickMatches": 152,
-      "lastComparedTick": 1980,
-      "nativeHostLastMatchedTick": 1920,
-      "construction": [
-        {
-          "actor": "host",
-          "nativeBuildingCompleted": true,
-          "nativeBuildingRemoved": true,
-          "nativeDemolitionCaptureCount": 1,
-          "demolitionReplayedExactlyOnce": true,
-          "localCurrencyUnchangedAfterReplay": true,
-          "equalNetRubleDecrease": 6790.93368056044
-        },
-        {
-          "actor": "client",
-          "nativeBuildingCompleted": true,
-          "nativeBuildingRemoved": true,
-          "nativeDemolitionCaptureCount": 1,
-          "demolitionReplayedExactlyOnce": true,
-          "localCurrencyUnchangedAfterReplay": true,
-          "equalNetRubleDecrease": 6606.121263811365
-        }
-      ],
-      "longRun": null,
-      "proxy": {
-        "profile": "lag-jitter",
-        "usedConnections": 1,
-        "maxWriteChunk": 256,
-        "hostToClientBytes": 65624,
-        "clientToHostBytes": 40784,
-        "injectedDisconnects": 0,
-        "scope": "TCP stream delay/jitter/fragmentation or explicit connection closure; not OS packet loss"
-      }
-    },
-    {
-      "run": "2026-10-25T09-01-33-845Z",
+      "run": "2026-11-03T10-27-33-825Z",
       "outcome": "PASS",
       "completedChecks": [
         "injected TCP closure detected and client rejoined with strict matching state"
       ],
-      "exactTickMatches": 54,
-      "lastComparedTick": 54,
-      "nativeHostLastMatchedTick": 60,
-      "construction": [],
+      "chaos": "lag-jitter",
+      "disconnectAfterMs": 15000,
+      "matchedSamples": 73,
+      "lastComparedTick": 73,
       "longRun": null,
-      "proxy": {
-        "profile": "clean",
-        "usedConnections": 2,
-        "maxWriteChunk": 256,
-        "hostToClientBytes": 14252,
-        "clientToHostBytes": 9736,
-        "injectedDisconnects": 1,
-        "scope": "TCP stream delay/jitter/fragmentation or explicit connection closure; not OS packet loss"
-      }
+      "scope": "Two actual clients on one Windows PC with isolated native events. Separate PCs, friend network, Steam P2P and OS packet loss are not tested."
     }
   ],
-  "nativeUnsupportedBuildGuard": {
-    "pass": true,
-    "verifiedAt": "2026-10-25T09:08:41.7117825Z"
+  "preservation": {
+    "passed": true,
+    "originalSaveFiles": 1,
+    "desktopModSaveFiles": 56,
+    "originalGameExeAndEngineUnchanged": true
   },
-  "packageLaunch": {
-    "pass": true,
-    "verifiedAt": "2026-10-25T09:10:34.7853819Z",
-    "shell": "Windows PowerShell 5.1, process RemoteSigned",
-    "gracefulExit": false,
-    "cleanup": "owned copied process stopped after the 10-second close timeout",
-    "launchScriptSha256": "aacdae20d109306f6315f13d2123c5833f53bdf2e9b8dc71113275200ae5ad82",
-    "prepareScriptSha256": "3928c42532e9aa7a4c5d29df93692347cd199b011b6976ee341c6695c52d1465"
-  },
-  "originalSaves": {
-    "pass": true,
-    "files": 1083,
-    "verifiedAt": "2026-10-25T09:11:39.9402952Z",
-    "changed": 0,
-    "missing": 0,
-    "added": 0
-  },
-  "originalBinaries": {
-    "pass": true,
-    "verifiedAt": "2026-10-25T09:11:40.0365448Z",
-    "files": {
-      "C3DDLL64.dll": "65fcb6845c3cb7c25a22121f25904a855ea88657e31a3b50a15adac26e231516",
-      "steam_api64.dll": "e61ac9a9ac216d56abc70aaeefedc11708ef45aa1aa48f1dd313adfd9aa99150",
-      "SOVIET64.exe": "296644a9f207d609031fc2ae73fed2dcb34619a1d55a35d1c7b51965ce6841b8"
-    }
-  },
-  "unverified": [
-    "two separate PCs",
-    "friend network, Internet, NAT and VPN",
-    "Steam P2P/invitations",
-    "physical UI clicking",
-    "replay with different local currency selections on the two peers",
-    "all building types/tools, transport/office settings and long-term reliability beyond the measured run"
+  "limitations": [
+    "Root cause of supplied city desync remains unproven.",
+    "No separate-PC or internet/VPN test of this candidate.",
+    "No Steam P2P or relay in LAN variant."
   ]
 }

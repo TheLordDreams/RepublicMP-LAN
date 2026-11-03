@@ -2,8 +2,8 @@
   "schema": 1,
   "transport": "Lan",
   "files": {
+    "runtime/RepublicMP.dll": "c272ce1d4fdbafe169f68a4e093569fea5102c924918b31106e34be8f1fcda98",
     "runtime/tesmiolauncher.exe": "f4c3dab4e7baf2cdff5e91acb2edc98bb5534cbbc21aafe4047bb8d865a71d28",
-    "runtime/tesmioloader.dll": "60adb1b38d9f19855eeed299a71ab503be73b25268ce8450f71d1293a3b38557",
-    "runtime/RepublicMP.dll": "1d1adec7960987cd9c4cf49a14b93cd415a0cccea55ae4b2e4231c689e400c29"
+    "runtime/tesmioloader.dll": "60adb1b38d9f19855eeed299a71ab503be73b25268ce8450f71d1293a3b38557"
   }
 }

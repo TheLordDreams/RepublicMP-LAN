@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // See lockstep_net.h.
 #include "lockstep_net.h"
+#include "../core/network_settings.h"
 #include "commands.h"
 #include "presence.h"
 #include "../determinism/determinism.h"
@@ -239,6 +240,7 @@ static bool Send(Peer& p, unsigned type, const void* a, size_t na, const void* b
     if (!p.connected) return false;
     LsHeader h = { type, (unsigned)(na + nb) };
     EnterCriticalSection(&p.sendLock);
+    if (!p.connected) { LeaveCriticalSection(&p.sendLock); return false; }
     bool ok = NetworkSendExact(p.sock, &h, sizeof(h)) && (!na || NetworkSendExact(p.sock, a, na)) &&
               (!nb || NetworkSendExact(p.sock, b, nb));
     LeaveCriticalSection(&p.sendLock);
@@ -385,6 +387,11 @@ static void StartPeer(NetLink s, const char* nick, const char* ip)
     p.lastReceived = GetTickCount64();
     p.connected = true;
     p.thread = CreateThread(nullptr, 0, RecvThread, (LPVOID)(intptr_t)g_peerSlots, 0, nullptr);
+    if (!p.thread) {
+        p.connected = false; NetworkClose(s); p.sock = NET_NO_LINK;
+        Logf("republicmp  LOCKSTEP: could not start receive worker");
+        return;
+    }
     g_peerSlots++;
 }
 
@@ -420,7 +427,8 @@ int LockstepNet_HostAccept(int expected, DWORD timeoutMs, volatile bool* cancel,
             continue;
         }
         hello.nick[PROFILE_NICK_BYTES - 1] = 0;
-        NetworkSetTimeouts(s, 0);
+        NetworkSetTimeouts(s, 0); // peers may still be loading
+        NetworkSetSendTimeout(s, NetworkSettings_Ms(NET_SEND_SECONDS));
         char ip[48];
         NetworkPeerAddress(s, ip, sizeof(ip));
         StartPeer(s, hello.nick, ip);
@@ -450,6 +458,7 @@ bool LockstepNet_Join(const char* hostIp, DWORD timeoutMs, volatile bool* cancel
     for (;;) {
         NetLink s = NetworkConnect(hostIp, LOCKSTEP_PORT, 5000, 0, cancel);
         if (s != NET_NO_LINK) {
+            NetworkSetSendTimeout(s, NetworkSettings_Ms(NET_SEND_SECONDS));
             ResetState();
             g_isHost = false;
             LsHeader h = { LS_HELLO, sizeof(LsHello) };
@@ -461,6 +470,7 @@ bool LockstepNet_Join(const char* hostIp, DWORD timeoutMs, volatile bool* cancel
                 return false;
             }
             StartPeer(s, "host", hostIp);
+            if (!g_peerSlots) return false;
             Logf("republicmp  LOCKSTEP: connected as player");
             return true;
         }
@@ -475,10 +485,13 @@ void LockstepNet_Close()
     for (int i = 0; i < g_peerSlots; i++) {
         Peer& p = g_peers[i];
         if (p.sock != NET_NO_LINK) {
-            if (p.connected) Send(p, LS_BYE, nullptr, 0);
+            // Cancellation must wake a blocked sender before taking its lock.
+            NetworkShutdown(p.sock);
             p.connected = false;
+            EnterCriticalSection(&p.sendLock);
             NetworkClose(p.sock);
             p.sock = NET_NO_LINK;
+            LeaveCriticalSection(&p.sendLock);
         }
         if (p.thread) {
             WaitForSingleObject(p.thread, 5000);

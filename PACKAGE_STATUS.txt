@@ -1,10 +1,1 @@
-EXPERIMENTAL SOURCE/RUNTIME PACKAGE — Lan
-Packaging itself makes no claim about multiplayer correctness.
-Read REPORT_RU.md and QA_RESULTS.json, when supplied, for the measured DLL's
-actual completed tests and limitations. Same-PC tests do not prove remote play.
-No game files, saves, accounts, private logs or QA fixture assets are included.
-Sources: E3418/RepublicMP and MaxLegend/TesmioLoader plus the local modifications
-included under sources/. Preserve GPL and third-party license notices.
-Rebuild RepublicMP with sources/RepublicMP/tools/Build-Local.ps1 -Transport Lan.
-Rebuild the loader/launcher with sources/TesmioLoader/build.bat using official MSVC.
-No compiler or dependency installer is executed by this packaging script.
+EXPERIMENTAL LAN CANDIDATE 0.7.2-lan2-rc1. See QA_RESULTS.json. Original reported simulation desync is NOT claimed fixed.

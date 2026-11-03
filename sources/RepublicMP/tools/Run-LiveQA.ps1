@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-only
 [CmdletBinding()]
 param([Parameter(Mandatory=$true)][string]$Python,
+ [string]$TestRoot,
  [ValidateRange(0,60)][int]$LongMinutes=0,
  [switch]$Construction,
  [switch]$Rejoin,
@@ -12,6 +13,8 @@ $tool=Join-Path $repo 'third_party/coop-anything/gameslot/gameslot.py'
 $env:GAMESLOT_DIR=Join-Path $repo 'local/gameslot'
 $env:COOP_QA_OWNER='wrsr-liveqa-'+$PID
 $env:COOP_PYTHON=(Resolve-Path -LiteralPath $Python).Path
+if ($TestRoot) { $env:COOP_QA_TEST_ROOT=(Resolve-Path -LiteralPath $TestRoot).Path }
+else { Remove-Item Env:COOP_QA_TEST_ROOT -ErrorAction SilentlyContinue }
 $env:COOP_QA_LONG_MINUTES=[string]$LongMinutes
 $env:COOP_QA_CONSTRUCTION=if($Construction){'1'}else{'0'}
 $env:COOP_QA_REJOIN=if($Rejoin){'1'}else{'0'}

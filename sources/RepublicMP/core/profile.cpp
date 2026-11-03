@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // See profile.h.
 #include "profile.h"
+#include "network_settings.h"
+#include <atomic>
 #include <stdio.h>
 #include <string.h>
 
@@ -8,6 +10,7 @@ static char g_nick[PROFILE_NICK_BYTES] = "";
 static volatile int g_maxPlayers = PROFILE_MAX_PLAYERS;
 static CRITICAL_SECTION g_profileLock;
 static char g_file[MAX_PATH] = ""; // RepublicMP.profile.ini next to the DLL ("" when unknown)
+static std::atomic<int> g_networkSeconds[NET_SETTING_COUNT];
 
 static void Clean(const char* in, char* out, size_t outSize);
 
@@ -41,6 +44,8 @@ void Profile_Bind(const TsmHost* host)
     TsmBind(host);
     InitializeCriticalSection(&g_profileLock);
     FindFile();
+    for (int i = 0; i < NET_SETTING_COUNT; ++i)
+        g_networkSeconds[i] = NetworkSettings_Clamp(i, Profile_GetInt("network", kNetworkSettings[i].key, kNetworkSettings[i].initial));
     if (!g_file[0]) return;
     char nick[PROFILE_NICK_BYTES] = {};
     GetPrivateProfileStringA("profile", "nick", "", nick, sizeof(nick), g_file);
@@ -105,4 +110,12 @@ void Profile_SetInt(const char* section, const char* key, int value)
     char text[16];
     _snprintf_s(text, sizeof(text), _TRUNCATE, "%d", value);
     WritePrivateProfileStringA(section, key, text, g_file);
+}
+
+int NetworkSettings_Get(int setting) { return g_networkSeconds[setting].load(); }
+void NetworkSettings_Set(int setting, int seconds)
+{
+    int value = NetworkSettings_Clamp(setting, seconds);
+    g_networkSeconds[setting] = value;
+    Profile_SetInt("network", kNetworkSettings[setting].key, value);
 }

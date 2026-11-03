@@ -11,7 +11,7 @@
 #include "feature_config.h"
 
 #if REPUBLICMP_TCP_ONLY
-#define REPUBLICMP_VERSION "0.7.2-lan1"
+#define REPUBLICMP_VERSION "0.7.2-lan2-rc1"
 #else
 #define REPUBLICMP_VERSION "0.7.2-loc1"
 #endif

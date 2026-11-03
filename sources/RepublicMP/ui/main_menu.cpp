@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // See main_menu.h.
 #include "main_menu.h"
+#include "network_settings.h"
 #include "debug_window.h"
 #include "ui_log.h"
 #include "sync_block.h"
@@ -417,6 +418,7 @@ static void CoopPage(std::string& hostIp)
         ImGui::Spacing();
     }
     StatusPanel();
+    if (ImGui::CollapsingHeader(T("Network settings"))) NetworkSettings_DrawControls();
 
     ImGui::Spacing();
     ImGui::Separator();

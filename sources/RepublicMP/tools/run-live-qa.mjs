@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 const repo=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const local=path.join(repo,'local');
+const testRoot=process.env.COOP_QA_TEST_ROOT ? path.resolve(process.env.COOP_QA_TEST_ROOT) : path.join(local,'test-installs');
 if(!process.env.COOP_QA_OWNER||!process.env.COOP_PYTHON)throw Error('Use tools/Run-LiveQA.ps1 to acquire the game slots first');
 const slotTool=path.join(repo,'third_party','coop-anything','gameslot','gameslot.py');
 const dll=path.join(local,'build','lan','RepublicMP.dll');
@@ -27,7 +28,8 @@ assert.ok(!disconnectAfterMs||(chaos!=='none'&&!construction&&!longMinutes),'Fau
 const stamp=new Date().toISOString().replace(/[:.]/g,'-');
 const run=path.join(local,'qa-runs',stamp); fs.mkdirSync(run,{recursive:true});
 const seats=['host','client'].map(name=>{
-  const root=path.join(local,'test-installs',name), build=path.join(root,'tesmioloader','build');
+  const root=path.join(testRoot,name);
+  const build=fs.existsSync(path.join(root,'coop-runtime')) ? path.join(root,'coop-runtime') : path.join(root,'tesmioloader','build');
   const plugins=path.join(build,'plugins');
   if (!fs.existsSync(path.join(root,'TEST-COPY.txt'))) throw Error('Missing isolated-copy marker: '+name);
   return {name,root,build,plugins,sequence:0,gamePid:0,startedAt:Date.now()};
@@ -139,7 +141,7 @@ try {
     child.on('exit',code=>{if(code)s.launchError=Error(s.name+' launcher exit '+code);});
     fs.closeSync(stdout);fs.closeSync(stderr);
     const status=await wait(s.name+' native bridge startup',()=>read(s));
-    assert.equal(status.version,'0.7.2-lan1','Wrong or upstream DLL loaded');
+    assert.equal(status.version,'0.7.2-lan2-rc1','Wrong or upstream DLL loaded');
     s.gamePid=status.pid;
     const registered=spawnSync(process.env.COOP_PYTHON,['-I',slotTool,'register-pid','--owner',process.env.COOP_QA_OWNER,'--pid',String(s.gamePid)],{encoding:'utf8',windowsHide:true});
     if(registered.status!==0)throw Error('Could not register owned game PID: '+registered.stderr+registered.stdout);
